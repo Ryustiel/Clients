@@ -1,5 +1,8 @@
 """
 Handles producing vectors from string inputs by calling OpenAI's API.
+
+[tool.poetry.dependencies]
+langchain-openai = ">=0.3.7,<0.4.0"
 """
 from typing import (
     List,

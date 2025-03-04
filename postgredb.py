@@ -1,5 +1,8 @@
 """
 Handles connecting to a postgre database that supports pgvector.
+
+[tool.poetry.dependencies]
+psycopg = {extras = ["binary", "async"], version = "^3.2.5"}
 """
 from typing import (
     Any,
@@ -7,15 +10,32 @@ from typing import (
     Optional,
 )
 
-from sqlalchemy import create_engine, text, Engine
+from sqlalchemy import create_engine, text, Engine, Result
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
+
+# ==================================================== HANDLER
 
 class SessionHandler:
     """
     Handles the session.
     """
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, session_maker: sessionmaker, async_session_maker: async_sessionmaker):
+        self._session_maker = session_maker
+        self._async_session_maker = async_session_maker
+        self._session = None
+        self._async_session = None
+
+    @property
+    def session(self) -> Session:
+        if self._session is None:
+            self._session = self._session_maker()
+    
+    @property
+    def async_session(self) -> AsyncSession:
+        if self._async_session is None:
+            self._async_session = self._async_session_maker()
+        return self._async_session
 
     def __enter__(self) -> Session:
         return self.session
@@ -23,17 +43,27 @@ class SessionHandler:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.commit()
         self.session.close()
-        return False  # Handle exceptions if necessary; return True to suppress them, False to propagate
+    
+    async def __aenter__(self) -> Session:
+        return self.async_session
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.async_session.commit()
+        await self.async_session.close()
+
+# ======================================================= CLIENT
 
 class PostgreDatabaseClient:
     """
     A simple client using SQLAlchemy to interact with a postgre database.
     """
-    def __init__(self, url: str):
+    def __init__(self, connection_string: str):
 
-        self.url = url
-        self.engine = create_engine(self.url)
+        self.engine = create_engine(connection_string)
         self.sessionmaker = sessionmaker(bind=self.engine)
+
+        self.async_engine = create_async_engine(connection_string)
+        self.async_sessionmarker = async_sessionmaker(bind=self.engine)
 
         self._active_context_session = None
     
@@ -51,24 +81,41 @@ class PostgreDatabaseClient:
             session.execute(text("CREATE SCHEMA public"))
 
     def activate_pgvector(self):
+        """Makes sure the PGVector extension is active on the postgresql database."""
         with self.handler() as session:
             session.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
 
     # ================================================================= QUERY OPERATIONS
 
-
+    def query(self, query: str) -> Result:
+        """
+        Runs the query on the database and returns the result as a sqlalchemy object.
+        """
+        with self.handler() as session:
+            return session.execute(text(query))
+        
+    async def aquery(self, query: str) -> Result:
+        """
+        Runs the query on the database and returns the result as a sqlalchemy object.
+        """
+        async with self.handler() as session:
+            return await session.execute(text(query))
 
     # ================================================================= SESSION HANDLING
 
     def session(self) -> Session:
         return self.sessionmaker()
+    
+    def asession(self) -> AsyncSession:
+        return self.async_sessionmarker()
 
     def handler(self) -> SessionHandler:
         """
         Create a SessionHandler, 
-        exposing a Session when used in a context manager.
+        which supports both synchronous and asynchronous sessions. 
+        Use the context manager (with / async with) to create a session.
         """
-        return SessionHandler(session=self.session())
+        return SessionHandler(session_maker=self.sessionmaker, async_session_maker=self.async_sessionmarker)
 
     def __call__(self) -> SessionHandler:
         """
