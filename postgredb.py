@@ -30,6 +30,7 @@ class SessionHandler:
     def session(self) -> Session:
         if self._session is None:
             self._session = self._session_maker()
+        return self._session
     
     @property
     def async_session(self) -> AsyncSession:
@@ -41,14 +42,20 @@ class SessionHandler:
         return self.session
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.commit()
+        if exc_type:
+            self.session.rollback()
+        else:
+            self.session.commit()
         self.session.close()
     
     async def __aenter__(self) -> Session:
         return self.async_session
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.async_session.commit()
+        if exc_type:
+            await self.async_session.rollback()
+        else:
+            await self.async_session.commit()
         await self.async_session.close()
 
 # ======================================================= CLIENT
