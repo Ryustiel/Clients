@@ -3,11 +3,8 @@ from typing import (
     Any,
     List,
     Dict,
-    Set,
-    Optional,
-    Literal,
 )
-from .postgredb import PostgreDatabaseClient
+from ..postgredb import PostgreDatabaseClient
 from sqlalchemy import func
 
 from seisoparser import ParserResult, WordCategories  # External package
