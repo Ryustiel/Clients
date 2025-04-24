@@ -10,7 +10,7 @@ from typing import (
 )
 from abc import abstractmethod
 
-from openai import AzureOpenAI, AsyncAzureOpenAI
+from openai import AzureOpenAI, AsyncAzureOpenAI, OpenAI, AsyncOpenAI
 
 class VectorClient:
     @abstractmethod
@@ -28,6 +28,7 @@ class VectorClient:
         Size = 3072 if model == "text-embedding-3-large"
         """
         raise NotImplementedError("Implement avectorize() in your subclass.")
+
 
 class AzureVectorClient(VectorClient):
     """
@@ -76,3 +77,36 @@ class AzureVectorClient(VectorClient):
             model = self.model
         )
         return response.data[0].embedding
+
+
+class OpenAIVectorClient(AzureVectorClient):
+    """
+    A vector client compatible with standard OpenAI API.
+    """
+    def __init__(self, 
+        api_key: str,
+        model: str = "text-embedding-3-large",
+        enforce_size: Optional[int] = None,
+    ):
+        """
+        Initialize a vector client for standard OpenAI API.
+
+        Parameters:
+            api_key (str):
+                The OpenAI API key starting with 'sk-'.
+            model (str):
+                The name of the embeddings model.
+            enforce_size (int, optional):
+                If set to a value, ensures .vectorize() output vector is the specified size.
+                Uses the string "a" to test.
+        """
+        self.model = model
+        self.api_key = api_key
+  
+        self.client = OpenAI(api_key=api_key)
+        self.async_client = AsyncOpenAI(api_key=api_key)
+
+        if enforce_size is not None:
+            vector = self.vectorize("a")
+            if len(vector) != enforce_size:
+                raise ValueError(f"The embeddings model returned a vector of length {len(vector)} whereas {enforce_size} was expected.")
