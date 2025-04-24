@@ -3,12 +3,18 @@ name = "Clients"
 version = "0.1.0"
 description = "Various clients for various usage."
 authors = [{ name = "Raphael Nguyen", email = "raph.nyn@gmail.com" }]
-license = { text = "MIT" }
 requires-python = ">=3.11,<4.0"
+license = { text = "MIT" }
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]  # Required for Poetry-specific settings
-packages = [{ include = "clients", from = "src" }]
+[tool.hatch.build.targets.sdist]
+include = ["src/clients"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/clients"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/clients" = "clients"
