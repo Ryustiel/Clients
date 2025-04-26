@@ -4,7 +4,7 @@ from typing import (
     List,
     Dict,
 )
-from ..postgredb import PostgreDatabaseClient
+from ..sqlalchemy.postgredb import PostgreDatabaseClient
 from sqlalchemy import func
 
 from seisoparser import ParserResult, WordCategories  # External package

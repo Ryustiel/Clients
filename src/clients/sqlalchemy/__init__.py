@@ -4,4 +4,4 @@ __copyright__ = "© 2025 Raphael Nguyen"
 __license__ = "MIT"
 __version__ = "1.0.0"
 
-from .parsing import SeisoParserClient
+from .postgredb import PostgreDatabaseClient
